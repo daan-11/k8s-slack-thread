@@ -61,12 +61,3 @@ jobs:
         helm upgrade --install leo ./helm/leo \
           --set leo.image=ghcr.io/${{ github.repository_owner }}/leo \
           --set leo.pullPolicy=Always
-
-    - name: Debug deployment
-      run: |
-        echo "Pod details:"
-        kubectl get pods -l app.kubernetes.io/name=leo -o wide
-        echo "\nPod description:"
-        kubectl describe pod -l app.kubernetes.io/name=leo
-        echo "\nPod logs:"
-        kubectl logs -l app.kubernetes.io/name=leo --tail=50

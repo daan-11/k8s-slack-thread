@@ -1,0 +1,29 @@
+replicaCount: 1
+
+leo:
+  image: leo
+  tag: latest
+  environment: production
+  # set to never when using local images
+  pullPolicy: Always
+  # Optional environment variables
+  env:
+    MAX_SUMMARY_BULLETS: "5"
+    OPENAI_TEMPERATURE: "0.5"
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+nodeSelector: {}
+
+affinity: {}
+
+# Service account configuration
+serviceAccount:
+  create: false
+  name: ""

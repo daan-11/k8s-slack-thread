@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ template "leo.fullname" . }}
+  name: {{ include "leo.fullname" . }}
   labels:
     {{- include "leo.labels" . | nindent 4 }}
 spec:
@@ -14,18 +14,35 @@ spec:
       labels:
         {{- include "leo.selectorLabels" . | nindent 8 }}
     spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.leo.image }}:{{ .Values.leo.tag }}"
           imagePullPolicy: {{ .Values.leo.pullPolicy }}
-          envFrom:
-            - secretRef:
-                name: {{ template "leo.fullname" . }}
           env:
-            - name: MAX_SUMMARY_BULLETS
-              value: {{ .Values.leo.env.MAX_SUMMARY_BULLETS | quote }}
-            - name: OPENAI_TEMPERATURE
-              value: {{ .Values.leo.env.OPENAI_TEMPERATURE | quote }}
+            {{- range $key, $value := .Values.leo.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            # Add environment variables from secrets
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "leo.fullname" . }}
+                  key: OPENAI_API_KEY
+            - name: SLACK_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "leo.fullname" . }}
+                  key: SLACK_BOT_TOKEN
+            - name: SLACK_APP_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "leo.fullname" . }}
+                  key: SLACK_APP_TOKEN
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}

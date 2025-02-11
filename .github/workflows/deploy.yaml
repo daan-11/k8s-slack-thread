@@ -10,7 +10,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-      actions: read
 
     steps:
     - uses: actions/checkout@v4
@@ -27,25 +26,12 @@ jobs:
       with:
         push: true
         tags: ghcr.io/${{ github.repository_owner }}/leo:latest
-        context: .
 
-    - name: Verify image push
+    - name: Verify image
       run: |
-        # Try to pull the image to verify it was pushed
         docker pull ghcr.io/${{ github.repository_owner }}/leo:latest
-        # Show image details
+        echo "Image details:"
         docker inspect ghcr.io/${{ github.repository_owner }}/leo:latest
-
-    - name: Make package public
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        # Make the package public
-        curl -X PATCH \
-          -H "Accept: application/vnd.github.v3+json" \
-          -H "Authorization: Bearer $GH_TOKEN" \
-          https://api.github.com/user/packages/container/leo/visibility \
-          -d '{"visibility":"public"}'
 
     - name: Setup kubectl
       run: |
@@ -53,22 +39,19 @@ jobs:
         echo "${{ secrets.KUBE_CONFIG }}" > $HOME/.kube/config
         chmod 600 $HOME/.kube/config
 
-    - name: Create secrets
+    - name: Create image pull secret
       run: |
-        # Create image pull secret with base64 encoded token
         kubectl delete secret ghcr-secret --ignore-not-found
         kubectl create secret docker-registry ghcr-secret \
           --docker-server=ghcr.io \
           --docker-username=${{ github.actor }} \
-          --docker-password=$(echo ${{ steps.generate_token.outputs.token }}) \
+          --docker-password=${{ secrets.GITHUB_TOKEN }} \
           --docker-email=${{ github.actor }}@users.noreply.github.com
 
-        # Create application secrets
-        kubectl delete secret leo --ignore-not-found
-        kubectl create secret generic leo \
-          --from-literal=OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
-          --from-literal=SLACK_BOT_TOKEN=${{ secrets.SLACK_BOT_TOKEN }} \
-          --from-literal=SLACK_APP_TOKEN=${{ secrets.SLACK_APP_TOKEN }}
+    - name: Verify secret
+      run: |
+        echo "Checking secret:"
+        kubectl get secret ghcr-secret -o yaml
 
     - name: Deploy Helm Chart
       run: |
@@ -79,9 +62,7 @@ jobs:
 
     - name: Debug deployment
       run: |
-        echo "Pod details:"
-        kubectl get pods -l app.kubernetes.io/name=leo -o wide
-        echo "\nPod description:"
+        echo "Waiting for pod to be created..."
+        sleep 10
+        kubectl get pods
         kubectl describe pod -l app.kubernetes.io/name=leo
-        echo "\nSecret details (redacted):"
-        kubectl get secret ghcr-secret -o yaml | grep -v "dockerconfigjson:" 

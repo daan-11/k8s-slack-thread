@@ -1,7 +1,7 @@
 replicaCount: 1
 
 leo:
-  image: leo
+  image: ghcr.io/your-org/leo  # This will be overridden by the --set command
   tag: latest
   environment: production
   # set to never when using local images

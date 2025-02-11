@@ -28,6 +28,24 @@ jobs:
         tags: ghcr.io/${{ github.repository_owner }}/leo:latest
         context: .
 
+    - name: Verify image push
+      run: |
+        # Try to pull the image to verify it was pushed
+        docker pull ghcr.io/${{ github.repository_owner }}/leo:latest
+        # Show image details
+        docker inspect ghcr.io/${{ github.repository_owner }}/leo:latest
+
+    - name: Make package public
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        # Make the package public
+        curl -X PATCH \
+          -H "Accept: application/vnd.github.v3+json" \
+          -H "Authorization: Bearer $GH_TOKEN" \
+          https://api.github.com/user/packages/container/leo/visibility \
+          -d '{"visibility":"public"}'
+
     - name: Setup kubectl
       run: |
         mkdir -p $HOME/.kube
@@ -56,4 +74,13 @@ jobs:
         helm upgrade --install leo ./helm/leo \
           --set leo.image=ghcr.io/${{ github.repository_owner }}/leo \
           --set leo.pullPolicy=Always \
-          --set imagePullSecrets[0].name=ghcr-secret 
+          --set imagePullSecrets[0].name=ghcr-secret
+
+    - name: Debug deployment
+      run: |
+        echo "Pod details:"
+        kubectl get pods -l app.kubernetes.io/name=leo -o wide
+        echo "\nPod description:"
+        kubectl describe pod -l app.kubernetes.io/name=leo
+        echo "\nSecret details:"
+        kubectl get secret ghcr-secret -o yaml 

@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "leo.fullname" . }}
+  labels:
+    {{- include "leo.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "leo.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "leo.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.leo.image }}:{{ .Values.leo.tag }}"
+          imagePullPolicy: {{ .Values.leo.pullPolicy }}
+          envFrom:
+            - secretRef:
+                name: {{ template "leo.fullname" . }}
+          env:
+            - name: MAX_SUMMARY_BULLETS
+              value: {{ .Values.leo.env.MAX_SUMMARY_BULLETS | quote }}
+            - name: OPENAI_TEMPERATURE
+              value: {{ .Values.leo.env.OPENAI_TEMPERATURE | quote }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }} 

@@ -26,6 +26,7 @@ jobs:
       with:
         push: true
         tags: ghcr.io/${{ github.repository_owner }}/leo:latest
+        context: .
 
     - name: Setup kubectl
       run: |
@@ -33,14 +34,22 @@ jobs:
         echo "${{ secrets.KUBE_CONFIG }}" > $HOME/.kube/config
         chmod 600 $HOME/.kube/config
 
-    - name: Create image pull secret
+    - name: Create secrets
       run: |
+        # Create image pull secret
+        kubectl delete secret ghcr-secret --ignore-not-found
         kubectl create secret docker-registry ghcr-secret \
           --docker-server=ghcr.io \
           --docker-username=${{ github.actor }} \
           --docker-password=${{ secrets.GITHUB_TOKEN }} \
-          --docker-email=${{ github.actor }}@users.noreply.github.com \
-          -o yaml --dry-run=client | kubectl apply -f -
+          --docker-email=${{ github.actor }}@users.noreply.github.com
+
+        # Create application secrets
+        kubectl delete secret leo --ignore-not-found
+        kubectl create secret generic leo \
+          --from-literal=OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
+          --from-literal=SLACK_BOT_TOKEN=${{ secrets.SLACK_BOT_TOKEN }} \
+          --from-literal=SLACK_APP_TOKEN=${{ secrets.SLACK_APP_TOKEN }}
 
     - name: Deploy Helm Chart
       run: |

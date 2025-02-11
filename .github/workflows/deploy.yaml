@@ -27,7 +27,16 @@ jobs:
         push: true
         tags: ghcr.io/${{ github.repository_owner }}/leo:latest
         context: .
-        provenance: false
+
+    - name: Make package public
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        curl -X PATCH \
+          -H "Accept: application/vnd.github.v3+json" \
+          -H "Authorization: Bearer $GH_TOKEN" \
+          https://api.github.com/user/packages/container/leo/visibility \
+          -d '{"visibility":"public"}'
 
     - name: Setup kubectl
       run: |
@@ -35,44 +44,23 @@ jobs:
         echo "${{ secrets.KUBE_CONFIG }}" > $HOME/.kube/config
         chmod 600 $HOME/.kube/config
 
-    - name: Create image pull secret
+    - name: Create application secrets
       run: |
-        kubectl delete secret ghcr-secret --ignore-not-found
-        kubectl create secret docker-registry ghcr-secret \
-          --docker-server=ghcr.io \
-          --docker-username=${{ github.actor }} \
-          --docker-password=${{ secrets.GITHUB_TOKEN }} \
-          --docker-email=${{ github.actor }}@users.noreply.github.com \
-          --namespace=default
-
-    - name: Apply ExternalSecret
-      run: |
-        # First apply the ExternalSecret
-        helm template leo ./helm/leo -s templates/externalsecret.yaml | kubectl apply -f -
-        
-        # Wait for the secret to be created
-        echo "Waiting for secret to be created..."
-        for i in {1..30}; do
-          if kubectl get secret leo -n default; then
-            echo "Secret 'leo' created successfully"
-            break
-          fi
-          echo "Waiting for secret to be created... attempt $i"
-          sleep 10
-        done
-
-    - name: Verify Secrets
-      run: |
-        echo "Checking if required secrets exist..."
-        kubectl get secret leo -n default
+        # Create application secrets
+        kubectl delete secret leo --ignore-not-found
+        kubectl create secret generic leo \
+          --from-literal=OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
+          --from-literal=SLACK_BOT_TOKEN=${{ secrets.SLACK_BOT_TOKEN }} \
+          --from-literal=SLACK_APP_TOKEN=${{ secrets.SLACK_APP_TOKEN }}
 
     - name: Deploy Helm Chart
       run: |
+        # Remove the externalsecret.yaml if it exists
+        rm -f helm/leo/templates/externalsecret.yaml || true
+        
         helm upgrade --install leo ./helm/leo \
           --set leo.image=ghcr.io/${{ github.repository_owner }}/leo \
-          --set leo.pullPolicy=Always \
-          --set imagePullSecrets[0].name=ghcr-secret \
-          --namespace=default
+          --set leo.pullPolicy=Always
 
     - name: Debug deployment
       run: |
@@ -80,3 +68,5 @@ jobs:
         kubectl get pods -l app.kubernetes.io/name=leo -o wide
         echo "\nPod description:"
         kubectl describe pod -l app.kubernetes.io/name=leo
+        echo "\nPod logs:"
+        kubectl logs -l app.kubernetes.io/name=leo --tail=50

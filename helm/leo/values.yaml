@@ -1,7 +1,7 @@
 replicaCount: 1
 
 leo:
-  image: ghcr.io/your-org/leo  # This will be overridden by the --set command
+  image: leo  # This will be overridden in the workflow
   tag: latest
   environment: production
   # set to never when using local images
@@ -10,6 +10,8 @@ leo:
   env:
     MAX_SUMMARY_BULLETS: "5"
     OPENAI_TEMPERATURE: "0.5"
+
+imagePullSecrets: []  # This will be set by --set in the workflow
 
 resources:
   requests:

@@ -34,14 +34,15 @@ def summarize_thread(messages, possible_prompt):
                 {"role": "system", "content": "You are a helpful assistant that summarizes Slack conversations concisely."},
                 {"role": "user", "content": f"Taking into account the following user instructions: {possible_prompt} if it makes sense, summarize the following Slack thread in maximum {os.getenv('MAX_SUMMARY_BULLETS', 5)} bullet points:\n\n{thread_text}"}
             ],
-            temperature=os.getenv("OPENAI_TEMPERATURE", 0.5),
+            temperature=float(os.getenv("OPENAI_TEMPERATURE", 0.5)),
         )
 
         
         summary = response.choices[0].message.content
         return summary
     except Exception as e:
-        print(f"Error summarizing thread: {e}")
+        logger.error(f"Error summarizing thread: {str(e)}")
+        logger.error(f"Thread text: {thread_text}")
         return "Sorry, I couldn't summarize the thread due to an error."
 
 

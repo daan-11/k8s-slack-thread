@@ -29,7 +29,7 @@ def summarize_thread(messages, possible_prompt):
 
     try:
         response = openai.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-3.5-turbo-0125",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant that summarizes Slack conversations concisely."},
                 {"role": "user", "content": f"Taking into account the following user instructions: {possible_prompt} if it makes sense, summarize the following Slack thread in maximum {os.getenv('MAX_SUMMARY_BULLETS', 5)} bullet points:\n\n{thread_text}"}

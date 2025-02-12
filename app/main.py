@@ -102,6 +102,14 @@ def handle_app_mention(body, say):
     except Exception as e:
         logger.error(f"Error handling app mention: {e}")
 
+@app.event("message")
+def handle_message(body, say):
+    event = body.get("event", {})
+    # Check if the message contains a mention of the bot
+    if f"<@{BOT_USER_ID}>" in event.get("text", ""):
+        # Reuse the same logic as app_mention
+        handle_app_mention(body, say)
+
 if __name__ == "__main__":
     # Create an app-level token with connections:write scope
     handler = SocketModeHandler(app=app, app_token=os.getenv("SLACK_APP_TOKEN"))
